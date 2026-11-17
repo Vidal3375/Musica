@@ -217,7 +217,7 @@ nav.tabbar a[aria-current="page"] { color: var(--wood); }
         <div>
           <div class="label">Compás</div>
           <div class="seg" id="beatsSeg" role="group" aria-label="Pulsos por compás">
-            <button data-b="2">2</button><button data-b="3">3</button><button data-b="4" aria-pressed="true">4</button>
+            <button data-b="1">1/4</button><button data-b="2">2/4</button><button data-b="3">3/4</button><button data-b="4" aria-pressed="true">4/4</button>
           </div>
         </div>
         <button class="btn" id="tapBtn">Marcar tempo (tap)</button>
@@ -404,7 +404,8 @@ const CHORDS = [
   { id: "La",  full: "La mayor", am: "A",  frets: [-1, 0, 2, 2, 2, 0], fingers: [0, 0, 1, 2, 3, 0], lvl: 1 },
   { id: "Re",  full: "Re mayor", am: "D",  frets: [-1, -1, 0, 2, 3, 2], fingers: [0, 0, 0, 1, 3, 2], lvl: 1 },
   { id: "Do",  full: "Do mayor", am: "C",  frets: [-1, 3, 2, 0, 1, 0], fingers: [0, 3, 2, 0, 1, 0], lvl: 2 },
-  { id: "Sol", full: "Sol mayor", am: "G", frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3], lvl: 2 },
+  { id: "Sol", full: "Sol mayor (3 dedos)", am: "G", frets: [3, 2, 0, 0, 0, 3], fingers: [2, 1, 0, 0, 0, 3], lvl: 2 },
+  { id: "Sol4", label: "Sol", full: "Sol mayor (4 dedos)", am: "G", frets: [3, 2, 0, 0, 3, 3], fingers: [2, 1, 0, 0, 3, 4], lvl: 2 },
   { id: "Rem", full: "Re menor", am: "Dm", frets: [-1, -1, 0, 2, 3, 1], fingers: [0, 0, 0, 2, 3, 1], lvl: 2 },
   { id: "Fa",  full: "Fa mayor (fácil)", am: "F", frets: [-1, -1, 3, 2, 1, 1], fingers: [0, 0, 3, 2, 1, 1], lvl: 3 },
   { id: "Si7", full: "Si séptima", am: "B7", frets: [-1, 2, 1, 2, 0, 2], fingers: [0, 2, 1, 3, 0, 4], lvl: 3 }
@@ -551,7 +552,7 @@ function renderChords() {
     CHORDS.filter(c => c.lvl === l).forEach(ch => {
       const b = document.createElement("button");
       b.className = "chord-card"; b.type = "button";
-      b.innerHTML = `<span class="chord-name">${ch.id}</span><span class="chord-full">${ch.full}</span>${chordSVG(ch)}<span class="chord-am">Cifrado americano: <b>${ch.am}</b></span>`;
+      b.innerHTML = `<span class="chord-name">${ch.label || ch.id}</span><span class="chord-full">${ch.full}</span>${chordSVG(ch)}<span class="chord-am">Cifrado americano: <b>${ch.am}</b></span>`;
       b.addEventListener("click", () => {
         strum(ch); b.classList.add("playing"); setTimeout(() => b.classList.remove("playing"), 900);
       });
@@ -675,14 +676,15 @@ $("#micBtn").addEventListener("click", () => mic ? stopMic() : startMic());
 
 /* ===================== Práctica: cambios en 1 minuto ===================== */
 const pA = $("#pA"), pB = $("#pB");
-CHORDS.forEach(ch => { pA.add(new Option(ch.id, ch.id)); pB.add(new Option(ch.id, ch.id)); });
+const optText = ch => ch.label ? ch.label + " (4 dedos)" : ch.id;
+CHORDS.forEach(ch => { pA.add(new Option(optText(ch), ch.id)); pB.add(new Option(optText(ch), ch.id)); });
 const lastPair = store.get("pair", ["Mim", "Lam"]);
 pA.value = lastPair[0]; pB.value = lastPair[1];
-const pairKey = () => [pA.value, pB.value].sort().join(" ⇄ ");
+const pairKey = () => [pA.value, pB.value].map(id => optText(byId(id))).sort().join(" ⇄ ");
 function renderPair() {
   $("#pairDiagrams").innerHTML = [pA.value, pB.value].map(id => {
     const ch = byId(id);
-    return `<div style="display:grid;justify-items:center"><span class="chord-name" style="font-size:1.2rem">${ch.id}</span>${chordSVG(ch, true)}</div>`;
+    return `<div style="display:grid;justify-items:center"><span class="chord-name" style="font-size:1.2rem">${ch.label || ch.id}</span>${chordSVG(ch, true)}</div>`;
   }).join("");
   const best = store.get("records", {})[pairKey()];
   $("#pBest").textContent = "Tu mejor marca con esta pareja: " + (best != null ? best + " cambios" : "todavía ninguna");
