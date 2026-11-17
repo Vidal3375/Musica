@@ -440,6 +440,36 @@ function beep(t, freq, dur = 0.05, vol = 0.6) {
   o.start(t); o.stop(t + dur + 0.02);
 }
 
+// Golpe de madera (tipo "woodblock"): tono corto que cae de altura + chasquido filtrado.
+let noiseBuf = null;
+function wood(t, accent) {
+  const c = audio(), f = accent ? 1250 : 880, vol = accent ? 0.9 : 0.6;
+  if (!noiseBuf) {
+    noiseBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.03), c.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const out = c.createGain(); out.gain.value = vol; out.connect(c.destination);
+  // cuerpo: dos parciales sinusoidales que bajan de tono y se apagan rápido
+  [[1, 1, 0.075], [2.4, 0.35, 0.03]].forEach(([mult, amp, dur]) => {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = "sine";
+    o.frequency.setValueAtTime(f * mult * 1.5, t);
+    o.frequency.exponentialRampToValueAtTime(f * mult, t + 0.006);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(amp, t + 0.001);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(out);
+    o.start(t); o.stop(t + dur + 0.02);
+  });
+  // ataque: chasquido de ruido filtrado
+  const n = c.createBufferSource(), bp = c.createBiquadFilter(), ng = c.createGain();
+  n.buffer = noiseBuf; bp.type = "bandpass"; bp.frequency.value = f * 2.2; bp.Q.value = 3;
+  ng.gain.setValueAtTime(0.5, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.015);
+  n.connect(bp).connect(ng).connect(out);
+  n.start(t); n.stop(t + 0.03);
+}
+
 // Sonido de cuerda pulsada (algoritmo Karplus-Strong), generado en el navegador.
 const pluckCache = new Map();
 function pluckBuffer(freq, dur = 2.2) {
@@ -543,7 +573,7 @@ function scheduler() {
   const c = audio();
   while (met.next < c.currentTime + 0.12) {
     const first = met.beat === 0;
-    beep(met.next, first ? 1600 : 1000, 0.05, first ? 0.9 : 0.6);
+    wood(met.next, first);
     met.queue.push({ t: met.next, beat: met.beat });
     met.next += 60 / met.bpm;
     met.beat++;
